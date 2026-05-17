@@ -1,0 +1,35 @@
+{
+  "name": "parserlab-pro-starter",
+  "version": "0.1.0",
+  "private": true,
+  "description": "ParserLab Pro - Interactive Compiler Parsing Studio.",
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "typecheck": "tsc --noEmit",
+    "demo": "tsx examples/ll1-demo.ts",
+    "demo:lr0": "tsx examples/lr0-demo.ts",
+    "test:smoke": "tsx tests/basic-smoke.ts",
+    "demo:slr1": "tsx examples/slr1-demo.ts",
+    "demo:lr1": "tsx examples/lr1-demo.ts",
+    "demo:lalr1": "tsx examples/lalr1-demo.ts"
+  },
+  "dependencies": {
+    "framer-motion": "^12.38.0",
+    "lucide-react": "^1.16.0",
+    "next": "^15.3.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.30",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "autoprefixer": "^10.5.0",
+    "postcss": "^8.5.13",
+    "tailwindcss": "^3.4.17",
+    "tsx": "^4.7.1",
+    "typescript": "^5.4.0"
+  }
+}

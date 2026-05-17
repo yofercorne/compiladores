@@ -1,0 +1,1169 @@
+<!DOCTYPE html>
+<html>
+<head>
+<link rel="stylesheet" href="styles.css">
+<meta charset="UTF-8">
+<title>ParserLab Pro — Mockup</title>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════ TOPBAR ═══════════════════════════════════════ -->
+<div class="topbar">
+  <div class="logo">
+    <div class="logo-mark">λ</div>
+    <div>
+      <div class="logo-name">Parser<em>Lab</em> Pro</div>
+    </div>
+    <span class="logo-tag">v1.0</span>
+  </div>
+
+  <nav class="nav">
+    <button class="nav-item active" onclick="switchModule('lab',this)">
+      <span class="nav-icon">⚗</span> Lab
+    </button>
+    <button class="nav-item" onclick="switchModule('automata',this)">
+      <span class="nav-icon">◎</span> Autómata
+    </button>
+    <button class="nav-item" onclick="switchModule('compare',this)">
+      <span class="nav-icon">⚔</span> Comparar
+    </button>
+    <button class="nav-item" onclick="switchModule('conflict',this)">
+      <span class="nav-icon">⚡</span> Conflictos
+    </button>
+    <button class="nav-item" onclick="switchModule('refactor',this)">
+      <span class="nav-icon">🔧</span> Refactor
+    </button>
+    <button class="nav-item" onclick="switchModule('tutor',this)">
+      <span class="nav-icon">🎓</span> Tutor IA
+    </button>
+    <button class="nav-item" onclick="switchModule('gallery',this)">
+      <span class="nav-icon">📚</span> Galería
+    </button>
+    <button class="nav-item" onclick="switchModule('report',this)">
+      <span class="nav-icon">📄</span> Reporte
+    </button>
+  </nav>
+
+  <div class="topbar-right">
+    <button class="pill-btn" onclick="togglePresMode()">⊞ Presentación</button>
+    <button class="pill-btn" onclick="toggleTheme()">◑ Tema</button>
+    <button class="pill-btn primary" id="runBtn" onclick="runSim()">▶ Ejecutar</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════ MAIN LAYOUT ═══════════════════════════════════════ -->
+<div class="app-grid">
+
+  <!-- ══════════════════════ LEFT PANEL — Grammar Editor ══════════════════════ -->
+  <div class="panel">
+    <div class="panel-hd">
+      <span class="panel-title">Grammar Editor</span>
+      <span class="badge b-green" id="gramBadge">Válida · LL(1)</span>
+    </div>
+    <div class="panel-body">
+
+      <!-- Examples -->
+      <div>
+        <div class="sec-label">Ejemplos rápidos</div>
+        <div class="ex-grid">
+          <div class="ex-chip" onclick="loadEx('arith')">
+            <strong>Aritmética</strong>E → T E' | + T
+          </div>
+          <div class="ex-chip" onclick="loadEx('ll1')">
+            <strong>LL(1)</strong>S → A B | ε
+          </div>
+          <div class="ex-chip" onclick="loadEx('lr')">
+            <strong>LR simple</strong>E → E + T | T
+          </div>
+          <div class="ex-chip" onclick="loadEx('ambig')">
+            <strong>Ambigua</strong>S → S+S | id
+          </div>
+          <div class="ex-chip" onclick="loadEx('eps')">
+            <strong>Con ε</strong>A → a A | ε
+          </div>
+          <div class="ex-chip" onclick="loadEx('slr')">
+            <strong>SLR(1)</strong>E → E+T | T*F
+          </div>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- Grammar textarea with line numbers -->
+      <div style="flex:1;display:flex;flex-direction:column;gap:6px;">
+        <div class="sec-label">Gramática</div>
+        <div class="editor-wrap" style="flex:1;min-height:170px;">
+          <div class="line-nums" id="lineNums">
+            <span>1</span><span>2</span><span>3</span><span>4</span><span>5</span>
+          </div>
+          <textarea
+            class="grammar-editor"
+            id="grammarIn"
+            style="padding-left:42px;width:100%;height:100%;"
+            spellcheck="false"
+            oninput="updateLines()"
+          >E  → T E'
+E' → + T E' | ε
+T  → F T'
+T' → * F T' | ε
+F  → ( E ) | id</textarea>
+        </div>
+        <div id="gramErr" style="font-size:10px;color:var(--red);display:none;gap:5px;align-items:center;">
+          ⚠ <span id="gramErrTxt"></span>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- Parser selector -->
+      <div>
+        <div class="sec-label">Parser</div>
+        <div class="parser-grid">
+          <div class="parser-card" data-p="recursive" onclick="selParser(this)">
+            <span class="pc-tag td-tag">Top-Down</span>
+            <span class="pc-name">Recursivo</span>
+            <span class="pc-sub">Descenso recursivo</span>
+          </div>
+          <div class="parser-card sel" data-p="ll1" onclick="selParser(this)">
+            <span class="pc-tag td-tag">Top-Down</span>
+            <span class="pc-name">LL(1)</span>
+            <span class="pc-sub">Predictivo tabla</span>
+          </div>
+          <div class="parser-card" data-p="lr0" onclick="selParser(this)">
+            <span class="pc-tag bu-tag">Bottom-Up</span>
+            <span class="pc-name">LR(0)</span>
+            <span class="pc-sub">Ítem-sets</span>
+          </div>
+          <div class="parser-card" data-p="slr1" onclick="selParser(this)">
+            <span class="pc-tag bu-tag">Bottom-Up</span>
+            <span class="pc-name">SLR(1)</span>
+            <span class="pc-sub">FOLLOW-guided</span>
+          </div>
+          <div class="parser-card" data-p="lr1" onclick="selParser(this)">
+            <span class="pc-tag bu-tag">Bottom-Up</span>
+            <span class="pc-name">LR(1)</span>
+            <span class="pc-sub">Canónico</span>
+          </div>
+          <div class="parser-card" data-p="lalr1" onclick="selParser(this)">
+            <span class="pc-tag bu-tag">Bottom-Up</span>
+            <span class="pc-name">LALR(1)</span>
+            <span class="pc-sub">Fusión de estados</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- Input string -->
+      <div>
+        <div class="sec-label">Cadena de entrada</div>
+        <div class="str-row">
+          <input class="str-input" id="strIn" value="id + id * id">
+          <button class="pill-btn primary" style="flex-shrink:0;" onclick="runSim()">→</button>
+        </div>
+        <div class="str-chips" style="margin-top:6px;">
+          <span class="str-chip" onclick="setStr('id + id * id')">id+id*id</span>
+          <span class="str-chip" onclick="setStr('id * ( id + id )')">id*(…)</span>
+          <span class="str-chip" onclick="setStr('id')">id</span>
+          <span class="str-chip" onclick="setStr('+ id')" style="color:var(--red);">inválido</span>
+          <span class="str-chip" onclick="setStr('( id )')">( id )</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══════════════════════ CENTER PANEL ══════════════════════ -->
+  <div class="panel" style="border-right:none;">
+    <div class="center-body">
+
+      <!-- ─── MODULE: LAB ─── -->
+      <div id="mod-lab" class="module" style="display:flex;flex-direction:column;flex:1;overflow:hidden;">
+        <div class="ctabs">
+          <button class="ctab active" onclick="setTab(this,'ff')">
+            <span class="tab-icon">∑</span> FIRST/FOLLOW
+          </button>
+          <button class="ctab" onclick="setTab(this,'table')">
+            <span class="tab-icon">⊞</span> Tabla LL(1)
+          </button>
+          <button class="ctab" onclick="setTab(this,'sim')">
+            <span class="tab-icon">⏱</span> Simulador
+          </button>
+          <button class="ctab" onclick="setTab(this,'tree')">
+            <span class="tab-icon">🌳</span> Árbol
+          </button>
+        </div>
+
+        <!-- TAB: FIRST / FOLLOW -->
+        <div id="tp-ff" class="tab-pane active">
+          <div class="ff-cols">
+            <div class="ff-card">
+              <div class="ff-head" style="color:var(--accent2);">FIRST</div>
+              <div class="ff-row">
+                <span class="ff-sym">E</span><span class="ff-eq">=</span>
+                <div class="ff-toks"><span class="tok tok-t">id</span><span class="tok tok-t">(</span></div>
+              </div>
+              <div class="ff-row">
+                <span class="ff-sym">E'</span><span class="ff-eq">=</span>
+                <div class="ff-toks"><span class="tok tok-t">+</span><span class="tok tok-e">ε</span></div>
+              </div>
+              <div class="ff-row">
+                <span class="ff-sym">T</span><span class="ff-eq">=</span>
+                <div class="ff-toks"><span class="tok tok-t">id</span><span class="tok tok-t">(</span></div>
+              </div>
+              <div class="ff-row">
+                <span class="ff-sym">T'</span><span class="ff-eq">=</span>
+                <div class="ff-toks"><span class="tok tok-t">*</span><span class="tok tok-e">ε</span></div>
+              </div>
+              <div class="ff-row">
+                <span class="ff-sym">F</span><span class="ff-eq">=</span>
+                <div class="ff-toks"><span class="tok tok-t">id</span><span class="tok tok-t">(</span></div>
+              </div>
+            </div>
+            <div class="ff-card">
+              <div class="ff-head" style="color:var(--accent);">FOLLOW</div>
+              <div class="ff-row">
+                <span class="ff-sym">E</span><span class="ff-eq">=</span>
+                <div class="ff-toks"><span class="tok tok-\$">$</span><span class="tok tok-t">)</span></div>
+              </div>
+              <div class="ff-row">
+                <span class="ff-sym">E'</span><span class="ff-eq">=</span>
+                <div class="ff-toks"><span class="tok tok-\$">$</span><span class="tok tok-t">)</span></div>
+              </div>
+              <div class="ff-row">
+                <span class="ff-sym">T</span><span class="ff-eq">=</span>
+                <div class="ff-toks"><span class="tok tok-t">+</span><span class="tok tok-\$">$</span><span class="tok tok-t">)</span></div>
+              </div>
+              <div class="ff-row">
+                <span class="ff-sym">T'</span><span class="ff-eq">=</span>
+                <div class="ff-toks"><span class="tok tok-t">+</span><span class="tok tok-\$">$</span><span class="tok tok-t">)</span></div>
+              </div>
+              <div class="ff-row">
+                <span class="ff-sym">F</span><span class="ff-eq">=</span>
+                <div class="ff-toks"><span class="tok tok-t">*</span><span class="tok tok-t">+</span><span class="tok tok-\$">$</span><span class="tok tok-t">)</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="sec-label">Producciones</div>
+          <div class="prod-list">
+            <div class="prod-row hi">
+              <span class="p-idx">1</span>
+              <span class="p-lhs">E</span>
+              <span class="p-rhs"><span class="op">→</span> <span class="nt">T</span> <span class="nt">E'</span></span>
+            </div>
+            <div class="prod-row">
+              <span class="p-idx">2</span>
+              <span class="p-lhs">E'</span>
+              <span class="p-rhs"><span class="op">→</span> <span class="t">+</span> <span class="nt">T</span> <span class="nt">E'</span></span>
+            </div>
+            <div class="prod-row">
+              <span class="p-idx">3</span>
+              <span class="p-lhs">E'</span>
+              <span class="p-rhs"><span class="op">→</span> <span class="ep">ε</span></span>
+            </div>
+            <div class="prod-row">
+              <span class="p-idx">4</span>
+              <span class="p-lhs">T</span>
+              <span class="p-rhs"><span class="op">→</span> <span class="nt">F</span> <span class="nt">T'</span></span>
+            </div>
+            <div class="prod-row">
+              <span class="p-idx">5</span>
+              <span class="p-lhs">T'</span>
+              <span class="p-rhs"><span class="op">→</span> <span class="t">*</span> <span class="nt">F</span> <span class="nt">T'</span></span>
+            </div>
+            <div class="prod-row">
+              <span class="p-idx">6</span>
+              <span class="p-lhs">T'</span>
+              <span class="p-rhs"><span class="op">→</span> <span class="ep">ε</span></span>
+            </div>
+            <div class="prod-row">
+              <span class="p-idx">7</span>
+              <span class="p-lhs">F</span>
+              <span class="p-rhs"><span class="op">→</span> <span class="t">(</span> <span class="nt">E</span> <span class="t">)</span></span>
+            </div>
+            <div class="prod-row">
+              <span class="p-idx">8</span>
+              <span class="p-lhs">F</span>
+              <span class="p-rhs"><span class="op">→</span> <span class="t">id</span></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB: LL(1) TABLE -->
+        <div id="tp-table" class="tab-pane">
+          <div class="tbl-wrap">
+            <table class="ptable">
+              <thead>
+                <tr>
+                  <th class="corner">NT \ T</th>
+                  <th>id</th>
+                  <th>+</th>
+                  <th>*</th>
+                  <th>(</th>
+                  <th>)</th>
+                  <th>$</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="nt-col">E</td>
+                  <td class="has-p">E→TE'</td>
+                  <td>—</td><td>—</td>
+                  <td class="has-p">E→TE'</td>
+                  <td>—</td><td>—</td>
+                </tr>
+                <tr>
+                  <td class="nt-col">E'</td>
+                  <td>—</td>
+                  <td class="has-p">E'→+TE'</td>
+                  <td>—</td><td>—</td>
+                  <td class="has-p hi-cell">E'→ε</td>
+                  <td class="has-p">E'→ε</td>
+                </tr>
+                <tr>
+                  <td class="nt-col">T</td>
+                  <td class="has-p">T→FT'</td>
+                  <td>—</td><td>—</td>
+                  <td class="has-p">T→FT'</td>
+                  <td>—</td><td>—</td>
+                </tr>
+                <tr>
+                  <td class="nt-col">T'</td>
+                  <td>—</td>
+                  <td class="has-p">T'→ε</td>
+                  <td class="has-p">T'→*FT'</td>
+                  <td>—</td>
+                  <td class="has-p">T'→ε</td>
+                  <td class="has-p">T'→ε</td>
+                </tr>
+                <tr>
+                  <td class="nt-col">F</td>
+                  <td class="has-p">F→id</td>
+                  <td>—</td><td>—</td>
+                  <td class="has-p">F→(E)</td>
+                  <td>—</td><td>—</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div style="margin-top:10px;padding:10px 14px;background:rgba(52,211,153,.06);border:1px solid rgba(52,211,153,.2);border-radius:var(--r);font-size:11px;color:var(--accent3);">
+            ✓ Tabla LL(1) sin conflictos — la gramática es LL(1)
+          </div>
+        </div>
+
+        <!-- TAB: SIMULATOR -->
+        <div id="tp-sim" class="tab-pane">
+          <div class="sim-ctrl">
+            <button class="sim-btn" title="Reset">⏮</button>
+            <button class="sim-btn" title="Atrás">⏪</button>
+            <button class="sim-btn play" title="Play/Pause">⏸</button>
+            <button class="sim-btn" title="Siguiente">⏩</button>
+            <button class="sim-btn" title="Al final">⏭</button>
+            <select class="speed-sel">
+              <option>0.5× lento</option>
+              <option selected>1× normal</option>
+              <option>2× rápido</option>
+            </select>
+            <span class="step-ctr">Paso 4 / 17</span>
+          </div>
+
+          <div class="sim-state">
+            <div class="state-box">
+              <div class="sb-head">Pila (top →)</div>
+              <div class="sb-body">
+                <span class="sym sym-eof">$</span>
+                <span class="sym sym-nt">T'</span>
+                <span class="sym sym-nt">E'</span>
+              </div>
+            </div>
+            <div class="state-box">
+              <div class="sb-head">Entrada restante</div>
+              <div class="sb-body">
+                <span class="sym sym-cur">*</span>
+                <span class="sym-rem">id $</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="action-box">
+            <div class="act-row">
+              <span class="act-lbl">Acción</span>
+              <span class="act-val expand">Expandir: T' → * F T'</span>
+            </div>
+            <div class="act-row">
+              <span class="act-lbl">Producción</span>
+              <span class="act-val">
+                <span class="nt">T'</span> <span class="op">→</span>
+                <span class="t">*</span> <span class="nt">F</span> <span class="nt">T'</span>
+              </span>
+            </div>
+            <div class="act-row">
+              <span class="act-lbl">Celda tabla</span>
+              <span class="act-val" style="color:var(--txt2);">M[T', *] = prod. 5</span>
+            </div>
+          </div>
+
+          <div class="steps-log">
+            <div class="log-head">
+              <span class="log-hd-txt">Historial de pasos</span>
+              <span class="badge b-blue">17 pasos</span>
+            </div>
+            <div class="log-row">
+              <span class="lr-n">1</span>
+              <span class="lr-stk">$ E</span>
+              <span class="lr-inp">id + id * id $</span>
+              <span><span class="badge b-purple">expand</span></span>
+            </div>
+            <div class="log-row">
+              <span class="lr-n">2</span>
+              <span class="lr-stk">$ E' T</span>
+              <span class="lr-inp">id + id * id $</span>
+              <span><span class="badge b-purple">expand</span></span>
+            </div>
+            <div class="log-row">
+              <span class="lr-n">3</span>
+              <span class="lr-stk">$ E' T' F</span>
+              <span class="lr-inp">id + id * id $</span>
+              <span><span class="badge b-purple">expand</span></span>
+            </div>
+            <div class="log-row cur">
+              <span class="lr-n">4</span>
+              <span class="lr-stk">$ E' T'</span>
+              <span class="lr-inp">* id $</span>
+              <span><span class="badge b-cyan">match</span></span>
+            </div>
+            <div class="log-row">
+              <span class="lr-n">5</span>
+              <span class="lr-stk">$ E' T' F *</span>
+              <span class="lr-inp">* id $</span>
+              <span><span class="badge b-purple">expand</span></span>
+            </div>
+            <div class="log-row">
+              <span class="lr-n">6</span>
+              <span class="lr-stk">$ E' T' F</span>
+              <span class="lr-inp">id $</span>
+              <span><span class="badge b-cyan">match</span></span>
+            </div>
+            <div class="log-row" style="opacity:.4">
+              <span class="lr-n">…</span>
+              <span class="lr-stk">…</span>
+              <span class="lr-inp">…</span>
+              <span><span class="badge b-blue">…</span></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB: PARSE TREE -->
+        <div id="tp-tree" class="tab-pane">
+          <div class="tree-wrap">
+            <div class="tree-svg-area">
+              <svg viewBox="0 0 620 340" width="620" height="340">
+                <defs>
+                  <marker id="arr" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
+                    <path d="M0,0 L0,6 L6,3 z" fill="rgba(96,165,250,0.3)"/>
+                  </marker>
+                </defs>
+
+                <!-- Edges -->
+                <line x1="310" y1="40" x2="180" y2="100" stroke="rgba(96,165,250,0.2)" stroke-width="1.5"/>
+                <line x1="310" y1="40" x2="440" y2="100" stroke="rgba(96,165,250,0.2)" stroke-width="1.5"/>
+                <line x1="180" y1="100" x2="110" y2="165" stroke="rgba(96,165,250,0.2)" stroke-width="1.5"/>
+                <line x1="180" y1="100" x2="250" y2="165" stroke="rgba(96,165,250,0.2)" stroke-width="1.5"/>
+                <line x1="440" y1="100" x2="390" y2="165" stroke="rgba(96,165,250,0.2)" stroke-width="1.5"/>
+                <line x1="440" y1="100" x2="490" y2="165" stroke="rgba(96,165,250,0.2)" stroke-width="1.5"/>
+                <line x1="110" y1="165" x2="110" y2="225" stroke="rgba(96,165,250,0.2)" stroke-width="1.5"/>
+                <line x1="250" y1="165" x2="250" y2="225" stroke="rgba(96,165,250,0.15)" stroke-width="1.5"/>
+                <line x1="390" y1="165" x2="390" y2="225" stroke="rgba(96,165,250,0.2)" stroke-width="1.5"/>
+                <line x1="490" y1="165" x2="450" y2="225" stroke="rgba(96,165,250,0.2)" stroke-width="1.5"/>
+                <line x1="490" y1="165" x2="530" y2="225" stroke="rgba(96,165,250,0.2)" stroke-width="1.5"/>
+
+                <!-- NT Nodes -->
+                <!-- E root -->
+                <circle cx="310" cy="32" r="22" fill="rgba(167,139,250,.12)" stroke="rgba(167,139,250,.4)" stroke-width="1.5"/>
+                <text x="310" y="37" text-anchor="middle" fill="#a78bfa" font-family="Fira Code" font-size="13" font-weight="600">E</text>
+                <!-- T -->
+                <circle cx="180" cy="100" r="20" fill="rgba(167,139,250,.1)" stroke="rgba(167,139,250,.3)" stroke-width="1.5"/>
+                <text x="180" y="105" text-anchor="middle" fill="#a78bfa" font-family="Fira Code" font-size="12" font-weight="600">T</text>
+                <!-- E' -->
+                <circle cx="440" cy="100" r="20" fill="rgba(167,139,250,.1)" stroke="rgba(167,139,250,.3)" stroke-width="1.5"/>
+                <text x="440" y="105" text-anchor="middle" fill="#a78bfa" font-family="Fira Code" font-size="11" font-weight="600">E'</text>
+                <!-- F -->
+                <circle cx="110" cy="165" r="18" fill="rgba(167,139,250,.08)" stroke="rgba(167,139,250,.25)" stroke-width="1.5"/>
+                <text x="110" y="170" text-anchor="middle" fill="#a78bfa" font-family="Fira Code" font-size="12" font-weight="600">F</text>
+                <!-- T' epsilon -->
+                <circle cx="250" cy="165" r="18" fill="rgba(251,191,36,.06)" stroke="rgba(251,191,36,.2)" stroke-width="1.5" stroke-dasharray="4,2"/>
+                <text x="250" y="170" text-anchor="middle" fill="#fbbf24" font-family="Fira Code" font-size="11">T'</text>
+                <!-- + terminal node -->
+                <circle cx="390" cy="165" r="18" fill="rgba(52,211,153,.08)" stroke="rgba(52,211,153,.25)" stroke-width="1.5"/>
+                <text x="390" y="170" text-anchor="middle" fill="#34d399" font-family="Fira Code" font-size="12" font-weight="600">+</text>
+                <!-- T2 -->
+                <circle cx="450" cy="225" r="18" fill="rgba(167,139,250,.08)" stroke="rgba(167,139,250,.2)" stroke-width="1.5"/>
+                <text x="450" y="230" text-anchor="middle" fill="#a78bfa" font-family="Fira Code" font-size="12">T</text>
+                <!-- E'' epsilon -->
+                <circle cx="530" cy="225" r="18" fill="rgba(251,191,36,.05)" stroke="rgba(251,191,36,.15)" stroke-width="1.5" stroke-dasharray="4,2"/>
+                <text x="530" y="230" text-anchor="middle" fill="#fbbf24" font-family="Fira Code" font-size="10">E'</text>
+
+                <!-- Leaf terminals -->
+                <rect x="88" y="218" width="44" height="22" rx="4" fill="rgba(52,211,153,.1)" stroke="rgba(52,211,153,.3)" stroke-width="1"/>
+                <text x="110" y="233" text-anchor="middle" fill="#34d399" font-family="Fira Code" font-size="11" font-weight="600">id</text>
+
+                <rect x="228" y="218" width="44" height="22" rx="4" fill="rgba(251,191,36,.08)" stroke="rgba(251,191,36,.2)" stroke-width="1"/>
+                <text x="250" y="233" text-anchor="middle" fill="#fbbf24" font-family="Fira Code" font-size="11">ε</text>
+
+                <rect x="368" y="218" width="44" height="22" rx="4" fill="rgba(52,211,153,.08)" stroke="rgba(52,211,153,.2)" stroke-width="1"/>
+                <text x="390" y="233" text-anchor="middle" fill="#34d399" font-family="Fira Code" font-size="11">+</text>
+
+                <!-- Active node pulse animation -->
+                <circle cx="180" cy="100" r="24" fill="none" stroke="rgba(96,165,250,.5)" stroke-width="2" stroke-dasharray="4,3">
+                  <animate attributeName="stroke-dashoffset" from="0" to="14" dur="1s" repeatCount="indefinite"/>
+                </circle>
+
+                <!-- Legend -->
+                <g transform="translate(10,300)">
+                  <circle cx="8" cy="8" r="7" fill="rgba(167,139,250,.12)" stroke="rgba(167,139,250,.4)" stroke-width="1"/>
+                  <text x="20" y="12" fill="rgba(168,184,216,.6)" font-size="10" font-family="Space Grotesk">No terminal</text>
+                  <circle cx="105" cy="8" r="7" fill="rgba(52,211,153,.1)" stroke="rgba(52,211,153,.3)" stroke-width="1"/>
+                  <text x="117" y="12" fill="rgba(168,184,216,.6)" font-size="10" font-family="Space Grotesk">Terminal</text>
+                  <circle cx="200" cy="8" r="7" fill="rgba(251,191,36,.06)" stroke="rgba(251,191,36,.2)" stroke-width="1" stroke-dasharray="4,2"/>
+                  <text x="212" y="12" fill="rgba(168,184,216,.6)" font-size="10" font-family="Space Grotesk">ε-producción</text>
+                  <circle cx="315" cy="8" r="7" fill="none" stroke="rgba(96,165,250,.5)" stroke-width="2"/>
+                  <text x="327" y="12" fill="rgba(168,184,216,.6)" font-size="10" font-family="Space Grotesk">Nodo activo</text>
+                </g>
+              </svg>
+            </div>
+          </div>
+          <div style="margin-top:10px;text-align:center;font-size:11px;color:var(--txt3);">
+            Árbol de derivación para
+            <span style="font-family:var(--mono);color:var(--txt1);">id + id * id</span>
+          </div>
+        </div>
+
+      </div><!-- /mod-lab -->
+
+      <!-- ─── MODULE: AUTOMATA ─── -->
+      <div id="mod-automata" class="module" style="display:none;flex:1;overflow-y:auto;padding:16px;flex-direction:column;gap:12px;">
+        <div class="auto-wrap">
+          <div class="auto-head">
+            <span style="font-size:11px;font-weight:600;color:var(--txt1);">Autómata LR(0) — 12 estados</span>
+            <div style="display:flex;gap:8px;">
+              <span class="badge b-amber">3 conflictos</span>
+              <button class="pill-btn" style="padding:3px 10px;font-size:10px;">Centrar</button>
+              <button class="pill-btn" style="padding:3px 10px;font-size:10px;">Exportar SVG</button>
+            </div>
+          </div>
+          <div class="auto-canvas" style="height:360px;overflow:hidden;">
+            <svg viewBox="0 0 640 340" width="640" height="340">
+              <defs>
+                <marker id="arr2" markerWidth="8" markerHeight="6" refX="6" refY="3" orient="auto">
+                  <path d="M0,0 L0,6 L8,3 z" fill="rgba(96,165,250,0.4)"/>
+                </marker>
+              </defs>
+
+              <!-- Edges -->
+              <line x1="60" y1="170" x2="150" y2="170" stroke="rgba(96,165,250,0.3)" stroke-width="1.5" marker-end="url(#arr2)"/>
+              <text x="100" y="163" text-anchor="middle" fill="rgba(52,211,153,.7)" font-family="Fira Code" font-size="9">E</text>
+              <line x1="210" y1="150" x2="295" y2="100" stroke="rgba(96,165,250,0.25)" stroke-width="1.5" marker-end="url(#arr2)"/>
+              <text x="248" y="117" fill="rgba(52,211,153,.7)" font-family="Fira Code" font-size="9">id</text>
+              <line x1="210" y1="185" x2="295" y2="235" stroke="rgba(96,165,250,0.25)" stroke-width="1.5" marker-end="url(#arr2)"/>
+              <text x="248" y="218" fill="rgba(96,165,250,.7)" font-family="Fira Code" font-size="9">T</text>
+              <line x1="360" y1="88" x2="445" y2="60" stroke="rgba(96,165,250,0.2)" stroke-width="1.5" marker-end="url(#arr2)"/>
+              <text x="398" y="65" fill="rgba(52,211,153,.7)" font-family="Fira Code" font-size="9">+</text>
+              <line x1="360" y1="248" x2="445" y2="280" stroke="rgba(96,165,250,0.2)" stroke-width="1.5" marker-end="url(#arr2)"/>
+              <text x="398" y="268" fill="rgba(52,211,153,.7)" font-family="Fira Code" font-size="9">*</text>
+              <line x1="510" y1="50" x2="580" y2="80" stroke="rgba(248,113,113,.3)" stroke-width="1.5" marker-end="url(#arr2)"/>
+              <text x="543" y="58" fill="rgba(248,113,113,.7)" font-family="Fira Code" font-size="9">E'</text>
+
+              <!-- State 0 - initial (double circle) -->
+              <circle cx="35" cy="170" r="26" fill="rgba(59,130,246,.08)" stroke="rgba(96,165,250,.35)" stroke-width="1.5"/>
+              <circle cx="35" cy="170" r="21" fill="none" stroke="rgba(96,165,250,.2)" stroke-width="1"/>
+              <text x="35" y="168" text-anchor="middle" fill="#60a5fa" font-family="Fira Code" font-size="11" font-weight="700">0</text>
+              <text x="35" y="180" text-anchor="middle" fill="rgba(96,165,250,.5)" font-family="Fira Code" font-size="8">init</text>
+
+              <!-- State 1 - active with pulse -->
+              <circle cx="183" cy="170" r="26" fill="rgba(59,130,246,.15)" stroke="rgba(96,165,250,.6)" stroke-width="2"/>
+              <text x="183" y="168" text-anchor="middle" fill="#60a5fa" font-family="Fira Code" font-size="11" font-weight="700">1</text>
+              <text x="183" y="180" text-anchor="middle" fill="rgba(96,165,250,.6)" font-family="Fira Code" font-size="8">active</text>
+              <circle cx="183" cy="170" r="32" fill="none" stroke="rgba(96,165,250,.25)" stroke-width="1.5">
+                <animate attributeName="r" values="28;34;28" dur="2s" repeatCount="indefinite"/>
+                <animate attributeName="opacity" values="0.5;0;0.5" dur="2s" repeatCount="indefinite"/>
+              </circle>
+
+              <!-- State 2 -->
+              <circle cx="325" cy="88" r="26" fill="rgba(59,130,246,.07)" stroke="rgba(96,165,250,.25)" stroke-width="1.5"/>
+              <text x="325" y="86" text-anchor="middle" fill="#8b9dc8" font-family="Fira Code" font-size="11" font-weight="700">2</text>
+              <text x="325" y="98" text-anchor="middle" fill="rgba(96,165,250,.4)" font-family="Fira Code" font-size="8">shift</text>
+
+              <!-- State 3 -->
+              <circle cx="325" cy="248" r="26" fill="rgba(59,130,246,.07)" stroke="rgba(96,165,250,.25)" stroke-width="1.5"/>
+              <text x="325" y="246" text-anchor="middle" fill="#8b9dc8" font-family="Fira Code" font-size="11" font-weight="700">3</text>
+              <text x="325" y="258" text-anchor="middle" fill="rgba(96,165,250,.4)" font-family="Fira Code" font-size="8">reduce</text>
+
+              <!-- State 4 -->
+              <circle cx="478" cy="48" r="26" fill="rgba(59,130,246,.07)" stroke="rgba(96,165,250,.25)" stroke-width="1.5"/>
+              <text x="478" y="53" text-anchor="middle" fill="#8b9dc8" font-family="Fira Code" font-size="11" font-weight="700">4</text>
+
+              <!-- State 5 - conflict (red) -->
+              <circle cx="478" cy="288" r="26" fill="rgba(248,113,113,.08)" stroke="rgba(248,113,113,.35)" stroke-width="1.5"/>
+              <text x="478" y="286" text-anchor="middle" fill="#f87171" font-family="Fira Code" font-size="11" font-weight="700">5</text>
+              <text x="478" y="298" text-anchor="middle" fill="rgba(248,113,113,.6)" font-family="Fira Code" font-size="8">conflict</text>
+
+              <!-- State 6 - accept (double circle green) -->
+              <circle cx="600" cy="88" r="26" fill="rgba(52,211,153,.08)" stroke="rgba(52,211,153,.35)" stroke-width="1.5"/>
+              <circle cx="600" cy="88" r="21" fill="none" stroke="rgba(52,211,153,.2)" stroke-width="1"/>
+              <text x="600" y="86" text-anchor="middle" fill="#34d399" font-family="Fira Code" font-size="11" font-weight="700">6</text>
+              <text x="600" y="98" text-anchor="middle" fill="rgba(52,211,153,.6)" font-family="Fira Code" font-size="8">accept</text>
+
+              <!-- Item tooltip on state 1 -->
+              <rect x="48" y="120" width="118" height="42" rx="5" fill="rgba(15,24,40,.95)" stroke="rgba(96,165,250,.3)" stroke-width="1"/>
+              <text x="58" y="136" fill="rgba(167,139,250,.9)" font-family="Fira Code" font-size="9">E' → · + T E'</text>
+              <text x="58" y="152" fill="rgba(168,184,216,.5)" font-family="Fira Code" font-size="9">E' → ·</text>
+
+              <!-- Legend -->
+              <g transform="translate(8,308)">
+                <circle cx="8" cy="8" r="6" fill="rgba(59,130,246,.15)" stroke="rgba(96,165,250,.6)" stroke-width="1.5"/>
+                <text x="18" y="12" fill="rgba(168,184,216,.5)" font-size="9" font-family="Space Grotesk">Estado activo</text>
+                <circle cx="115" cy="8" r="6" fill="rgba(248,113,113,.08)" stroke="rgba(248,113,113,.4)" stroke-width="1.5"/>
+                <text x="125" y="12" fill="rgba(168,184,216,.5)" font-size="9" font-family="Space Grotesk">Conflicto</text>
+                <circle cx="200" cy="8" r="6" fill="rgba(52,211,153,.08)" stroke="rgba(52,211,153,.4)" stroke-width="1.5"/>
+                <text x="210" y="12" fill="rgba(168,184,216,.5)" font-size="9" font-family="Space Grotesk">Aceptación</text>
+              </g>
+            </svg>
+          </div>
+        </div>
+
+        <!-- LR Items for selected state -->
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:12px;">
+          <div class="sec-label" style="margin-bottom:8px;">Estado 1 — Ítems LR</div>
+          <div style="display:flex;flex-direction:column;gap:4px;">
+            <div style="font-family:var(--mono);font-size:11px;padding:5px 10px;background:var(--bg3);border-radius:4px;color:var(--txt1);">
+              E → T <span style="color:var(--accent);">·</span> E' &nbsp;<span style="color:var(--txt3);">{ $, ) }</span>
+            </div>
+            <div style="font-family:var(--mono);font-size:11px;padding:5px 10px;background:var(--bg3);border-radius:4px;color:var(--txt1);">
+              E' → <span style="color:var(--accent);">·</span> + T E' &nbsp;<span style="color:var(--txt3);">{ $, ) }</span>
+            </div>
+            <div style="font-family:var(--mono);font-size:11px;padding:5px 10px;background:rgba(251,191,36,.05);border-radius:4px;border:1px solid rgba(251,191,36,.15);color:var(--amber);">
+              E' → <span style="color:var(--accent);">·</span> &nbsp;<span style="color:var(--txt3);">{ $, ) }</span>
+              &nbsp;<span style="font-size:9px;padding:1px 6px;background:rgba(251,191,36,.1);border-radius:3px;">reduce</span>
+            </div>
+          </div>
+        </div>
+      </div><!-- /mod-automata -->
+
+      <!-- ─── MODULE: COMPARE ─── -->
+      <div id="mod-compare" class="module" style="display:none;flex:1;overflow-y:auto;padding:16px;flex-direction:column;gap:14px;">
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:12px;font-size:12px;color:var(--txt2);">
+          Comparando: <span style="font-family:var(--mono);color:var(--txt0);">E → T E' | + T E' …</span>
+          &nbsp;·&nbsp; Cadena: <span style="font-family:var(--mono);color:var(--txt0);">id + id * id</span>
+        </div>
+        <div class="compare-grid">
+          <div class="compare-card pass">
+            <div class="cc-status">✓</div>
+            <div class="cc-name" style="color:var(--green);">Recursivo</div>
+            <div class="cc-detail">Compatible. Sin recursión izq.<br>Cadena: <b>Aceptada</b></div>
+            <div class="cc-bar"><div class="cc-fill" style="width:100%;background:var(--green);"></div></div>
+          </div>
+          <div class="compare-card pass">
+            <div class="cc-status">✓</div>
+            <div class="cc-name" style="color:var(--green);">LL(1)</div>
+            <div class="cc-detail">0 conflictos. Tabla completa.<br>Recomendado ⭐</div>
+            <div class="cc-bar"><div class="cc-fill" style="width:100%;background:var(--green);"></div></div>
+          </div>
+          <div class="compare-card fail">
+            <div class="cc-status">✗</div>
+            <div class="cc-name" style="color:var(--red);">LR(0)</div>
+            <div class="cc-detail">3 conflictos shift/reduce.<br>Gramática no es LR(0)</div>
+            <div class="cc-bar"><div class="cc-fill" style="width:30%;background:var(--red);"></div></div>
+          </div>
+          <div class="compare-card warn">
+            <div class="cc-status">~</div>
+            <div class="cc-name" style="color:var(--amber);">SLR(1)</div>
+            <div class="cc-detail">1 conflicto residual.<br>Usa LALR(1) en su lugar</div>
+            <div class="cc-bar"><div class="cc-fill" style="width:70%;background:var(--amber);"></div></div>
+          </div>
+          <div class="compare-card pass">
+            <div class="cc-status">✓</div>
+            <div class="cc-name" style="color:var(--green);">LR(1)</div>
+            <div class="cc-detail">0 conflictos. Tabla completa.<br>Más estados que LALR</div>
+            <div class="cc-bar"><div class="cc-fill" style="width:100%;background:var(--green);"></div></div>
+          </div>
+          <div class="compare-card pass">
+            <div class="cc-status">✓</div>
+            <div class="cc-name" style="color:var(--green);">LALR(1)</div>
+            <div class="cc-detail">0 conflictos. Estados fusionados.<br>Óptimo para producción</div>
+            <div class="cc-bar"><div class="cc-fill" style="width:100%;background:var(--green);"></div></div>
+          </div>
+        </div>
+        <div style="background:rgba(96,165,250,.05);border:1px solid rgba(96,165,250,.2);border-radius:var(--r);padding:12px 14px;font-size:12px;color:var(--txt1);line-height:1.7;">
+          💡 <strong style="color:var(--accent);">Recomendación:</strong> Esta gramática es LL(1). Para producción se recomienda
+          <strong style="color:var(--accent2);">LALR(1)</strong> (GCC/YACC). Para fines educativos, <strong style="color:var(--accent);">LL(1)</strong> es más legible.
+        </div>
+      </div><!-- /mod-compare -->
+
+      <!-- ─── MODULE: CONFLICT ─── -->
+      <div id="mod-conflict" class="module" style="display:none;flex:1;overflow-y:auto;padding:16px;flex-direction:column;gap:12px;">
+        <div style="font-size:11px;color:var(--txt2);padding:8px 12px;background:var(--bg2);border-radius:var(--r);border:1px solid var(--border);">
+          Analizando: <span style="font-family:var(--mono);color:var(--txt0);">E → E + T | T &nbsp;·&nbsp; T → T * F | F &nbsp;·&nbsp; F → id</span>
+        </div>
+
+        <div class="conflict-card">
+          <div class="conf-head">
+            <span class="conf-type">Shift / Reduce</span>
+            <span class="conf-state">Estado 2, símbolo: <span style="font-family:var(--mono);color:var(--accent);">+</span></span>
+          </div>
+          <div class="conf-prods">
+            <div class="conf-prod"><span style="color:var(--accent4);">shift →</span> Desplazar + al estado 4</div>
+            <div class="conf-prod"><span style="color:var(--accent2);">reduce →</span> E → E + T · (prod. 1)</div>
+          </div>
+          <div class="conf-explain">
+            El parser no sabe si continuar leyendo (shift) o aplicar la reducción
+            <span style="font-family:var(--mono);color:var(--accent2);">E → E + T</span>.
+            Esto ocurre porque el operador <span style="font-family:var(--mono);">+</span> es
+            asociativo por la izquierda y la gramática no especifica precedencia explícitamente.
+          </div>
+          <div class="conf-suggest">
+            💡 Reescribe eliminando recursión izquierda, o usa directivas de precedencia en YACC/Bison.
+          </div>
+        </div>
+
+        <div class="conflict-card">
+          <div class="conf-head">
+            <span class="conf-type">Reduce / Reduce</span>
+            <span class="conf-state">Estado 7, símbolo: <span style="font-family:var(--mono);color:var(--accent);">$</span></span>
+          </div>
+          <div class="conf-prods">
+            <div class="conf-prod"><span style="color:var(--accent2);">reduce →</span> E → T · (prod. 2)</div>
+            <div class="conf-prod"><span style="color:var(--accent2);">reduce →</span> T → T · (prod. 4)</div>
+          </div>
+          <div class="conf-explain">
+            Dos producciones diferentes pueden reducir con el mismo lookahead.
+            Esto suele indicar ambigüedad o producciones redundantes en la gramática.
+          </div>
+          <div class="conf-suggest">
+            💡 Revisa si existe una producción epsilon que colapsa las dos alternativas en una sola.
+          </div>
+        </div>
+      </div><!-- /mod-conflict -->
+
+      <!-- ─── MODULE: REFACTOR ─── -->
+      <div id="mod-refactor" class="module" style="display:none;flex:1;overflow-y:auto;padding:16px;flex-direction:column;gap:12px;">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="pill-btn primary">Eliminar rec. izq.</button>
+          <button class="pill-btn">Factorizar izq.</button>
+          <button class="pill-btn">Ambas transformaciones</button>
+        </div>
+        <div class="diff-block">
+          <div class="diff-head">
+            <span>Paso 1 — Eliminar recursión izquierda en E</span>
+            <span style="color:var(--green);font-size:10px;">✓ aplicado</span>
+          </div>
+          <div class="diff-line remove"><span class="diff-sign">−</span>E → E + T</div>
+          <div class="diff-line remove"><span class="diff-sign">−</span>E → T</div>
+          <div class="diff-line add"><span class="diff-sign">+</span>E → T E'</div>
+          <div class="diff-line add"><span class="diff-sign">+</span>E' → + T E'</div>
+          <div class="diff-line add"><span class="diff-sign">+</span>E' → ε</div>
+          <div class="diff-line ctx"><span class="diff-sign"> </span>T → F T' <span style="color:var(--txt3);font-size:10px;">(sin cambios)</span></div>
+        </div>
+        <div class="diff-block">
+          <div class="diff-head">
+            <span>Paso 2 — Eliminar recursión izquierda en T</span>
+            <span style="color:var(--green);font-size:10px;">✓ aplicado</span>
+          </div>
+          <div class="diff-line remove"><span class="diff-sign">−</span>T → T * F</div>
+          <div class="diff-line remove"><span class="diff-sign">−</span>T → F</div>
+          <div class="diff-line add"><span class="diff-sign">+</span>T → F T'</div>
+          <div class="diff-line add"><span class="diff-sign">+</span>T' → * F T'</div>
+          <div class="diff-line add"><span class="diff-sign">+</span>T' → ε</div>
+        </div>
+        <div style="padding:10px 14px;background:rgba(52,211,153,.06);border:1px solid rgba(52,211,153,.2);border-radius:var(--r);font-size:11px;color:var(--accent3);">
+          ✓ Gramática transformada es LL(1). Sin recursión izquierda. Lista para parser predictivo.
+        </div>
+      </div><!-- /mod-refactor -->
+
+      <!-- ─── MODULE: TUTOR ─── -->
+      <div id="mod-tutor" class="module" style="display:none;flex:1;overflow-y:auto;padding:16px;flex-direction:column;gap:14px;">
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:10px 14px;display:flex;align-items:center;gap:10px;">
+          <div class="ai-dot"></div>
+          <div style="font-size:12px;color:var(--txt1);">
+            Tutor IA activo · Modo: <strong style="color:var(--accent2);">Paso a paso guiado</strong>
+          </div>
+        </div>
+        <div class="tutor-chat">
+          <div class="msg ai">
+            <div class="msg-ava ai-ava">λ</div>
+            <div class="msg-bubble ai-bubble">
+              Vamos a analizar la cadena
+              <code style="background:var(--bg4);padding:1px 6px;border-radius:3px;font-size:11px;">id + id * id</code>
+              con el parser LL(1).<br><br>
+              La pila inicial es <code style="background:var(--bg4);padding:1px 5px;border-radius:3px;font-size:11px;">[ $, E ]</code>
+              y el primer símbolo de la entrada es <strong style="color:var(--accent);">id</strong>.<br><br>
+              ¿Cuál crees que es el siguiente paso?
+              <div class="tutor-opts">
+                <button class="tutor-opt">E → T E'</button>
+                <button class="tutor-opt">E → + T E'</button>
+                <button class="tutor-opt">Match: id</button>
+                <button class="tutor-opt">ERROR</button>
+              </div>
+            </div>
+          </div>
+          <div class="msg user">
+            <div class="msg-ava user-ava">U</div>
+            <div class="msg-bubble user-bubble">Expandir E → T E'</div>
+          </div>
+          <div class="msg ai">
+            <div class="msg-ava ai-ava">λ</div>
+            <div class="msg-bubble ai-bubble">
+              ✓ <strong style="color:var(--green);">¡Correcto!</strong><br><br>
+              La tabla M[E, id] = prod. 1 (<strong>E → T E'</strong>). El no terminal E se reemplaza
+              en la pila por T E'. La pila queda
+              <code style="background:var(--bg4);padding:1px 5px;border-radius:3px;font-size:11px;">[ $, E', T ]</code>.<br><br>
+              Ahora el tope es <strong style="color:var(--accent2);">T</strong> y el lookahead
+              sigue siendo <strong style="color:var(--accent);">id</strong>. ¿Qué hacemos?
+            </div>
+          </div>
+        </div>
+      </div><!-- /mod-tutor -->
+
+      <!-- ─── MODULE: GALLERY ─── -->
+      <div id="mod-gallery" class="module" style="display:none;flex:1;overflow-y:auto;padding:16px;flex-direction:column;gap:12px;">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px;">
+          <button class="pill-btn primary">Todas</button>
+          <button class="pill-btn">LL(1)</button>
+          <button class="pill-btn">LR</button>
+          <button class="pill-btn">Ambiguas</button>
+          <button class="pill-btn">Con ε</button>
+        </div>
+        <div class="gallery-grid">
+          <div class="gal-card">
+            <div class="gal-name">Expresiones aritméticas</div>
+            <div class="gal-desc">Gramática clásica con +, *, paréntesis y precedencia de operadores.</div>
+            <div class="gal-tags"><span class="gal-tag">LL(1)</span><span class="gal-tag">LALR(1)</span><span class="gal-tag">ε</span></div>
+          </div>
+          <div class="gal-card" style="border-color:var(--border2);">
+            <div class="gal-name">Declaraciones tipo C</div>
+            <div class="gal-desc">Tipos, identificadores y listas de parámetros básicos.</div>
+            <div class="gal-tags"><span class="gal-tag">SLR(1)</span><span class="gal-tag">compleja</span></div>
+          </div>
+          <div class="gal-card">
+            <div class="gal-name">If-else ambiguo</div>
+            <div class="gal-desc">El clásico problema del dangling else. Ilustra conflicto shift/reduce.</div>
+            <div class="gal-tags"><span class="gal-tag">ambigua</span><span class="gal-tag">conflicto</span></div>
+          </div>
+          <div class="gal-card">
+            <div class="gal-name">Palíndromos</div>
+            <div class="gal-desc">S → a S a | b S b | ε. Útil para demostrar LR(0).</div>
+            <div class="gal-tags"><span class="gal-tag">LR(0)</span><span class="gal-tag">ε</span></div>
+          </div>
+          <div class="gal-card">
+            <div class="gal-name">Listas con separadores</div>
+            <div class="gal-desc">L → E , L | E. Patrón muy común en compiladores reales.</div>
+            <div class="gal-tags"><span class="gal-tag">LL(1)</span><span class="gal-tag">simple</span></div>
+          </div>
+          <div class="gal-card">
+            <div class="gal-name">Mini JSON</div>
+            <div class="gal-desc">Objetos y arrays simplificados. Gramática real de un formato estándar.</div>
+            <div class="gal-tags"><span class="gal-tag">LR(1)</span><span class="gal-tag">anidado</span></div>
+          </div>
+        </div>
+      </div><!-- /mod-gallery -->
+
+      <!-- ─── MODULE: REPORT ─── -->
+      <div id="mod-report" class="module" style="display:none;flex:1;overflow-y:auto;padding:16px;flex-direction:column;gap:10px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+          <span style="font-size:14px;font-weight:700;">Reporte completo</span>
+          <div style="display:flex;gap:8px;">
+            <button class="pill-btn">Previsualizar</button>
+            <button class="pill-btn primary">⬇ Exportar PDF</button>
+          </div>
+        </div>
+        <div class="report-sec">
+          <div class="report-sec-title"><div class="report-check">✓</div>Gramática original</div>
+          <div style="font-family:var(--mono);font-size:11px;color:var(--txt1);line-height:2;">
+            <div><span class="nt">E</span> <span class="op">→</span> <span class="nt">T</span> <span class="nt">E'</span></div>
+            <div><span class="nt">E'</span> <span class="op">→</span> <span class="t">+</span> <span class="nt">T</span> <span class="nt">E'</span> <span class="op">|</span> <span class="ep">ε</span></div>
+            <div><span class="nt">T</span> <span class="op">→</span> <span class="nt">F</span> <span class="nt">T'</span></div>
+            <div><span class="nt">T'</span> <span class="op">→</span> <span class="t">*</span> <span class="nt">F</span> <span class="nt">T'</span> <span class="op">|</span> <span class="ep">ε</span></div>
+            <div><span class="nt">F</span> <span class="op">→</span> <span class="t">(</span> <span class="nt">E</span> <span class="t">)</span> <span class="op">|</span> <span class="t">id</span></div>
+          </div>
+        </div>
+        <div class="report-sec">
+          <div class="report-sec-title"><div class="report-check">✓</div>Conjuntos FIRST / FOLLOW</div>
+          <div style="font-size:11px;color:var(--txt2);line-height:2;font-family:var(--mono);">
+            FIRST(E) = {id, (} &nbsp;·&nbsp; FOLLOW(E) = {$, )}<br>
+            FIRST(E') = {+, ε} &nbsp;·&nbsp; FOLLOW(E') = {$, )}<br>
+            FIRST(T) = {id, (} &nbsp;·&nbsp; FOLLOW(T) = {+, $, )}<br>
+            FIRST(T') = {*, ε} &nbsp;·&nbsp; FOLLOW(T') = {+, $, )}<br>
+            FIRST(F) = {id, (} &nbsp;·&nbsp; FOLLOW(F) = {*, +, $, )}
+          </div>
+        </div>
+        <div class="report-sec">
+          <div class="report-sec-title"><div class="report-check">✓</div>Tabla LL(1)</div>
+          <div style="font-size:11px;color:var(--txt2);">Tabla generada sin conflictos · 5 NT × 6 terminales</div>
+        </div>
+        <div class="report-sec">
+          <div class="report-sec-title"><div class="report-check">✓</div>Simulación paso a paso</div>
+          <div style="font-size:11px;color:var(--txt2);">
+            17 pasos · Cadena: <span style="font-family:var(--mono);">id + id * id</span> ·
+            Resultado: <span style="color:var(--green);">Aceptada</span>
+          </div>
+        </div>
+        <div class="report-sec">
+          <div class="report-sec-title"><div class="report-check">✓</div>Árbol de derivación</div>
+          <div style="font-size:11px;color:var(--txt2);">Profundidad 5 · 13 nodos · Exportable como SVG/PNG</div>
+        </div>
+        <div class="report-sec" style="border-color:rgba(52,211,153,.2);">
+          <div class="report-sec-title"><div class="report-check">✓</div>Diagnóstico final</div>
+          <div style="font-size:11px;color:var(--txt2);line-height:1.8;">
+            Gramática LL(1) ✓ &nbsp;·&nbsp; Sin recursión izquierda ✓ &nbsp;·&nbsp;
+            Sin conflictos ✓ &nbsp;·&nbsp; Recomendación: <strong style="color:var(--accent2);">LALR(1)</strong> para producción
+          </div>
+        </div>
+      </div><!-- /mod-report -->
+
+    </div>
+  </div>
+
+  <!-- ══════════════════════ RIGHT PANEL — Diagnosis ══════════════════════ -->
+  <div class="panel right">
+    <div class="panel-hd">
+      <span class="panel-title">Diagnóstico</span>
+      <span class="badge b-purple" id="rightBadge">LL(1)</span>
+    </div>
+    <div class="panel-body">
+
+      <!-- Result indicator -->
+      <div class="result-card rc-accept">
+        <div class="rc-icon" style="color:var(--green);">✓</div>
+        <div class="rc-info">
+          <span class="rc-title" style="color:var(--green);">Aceptado</span>
+          <span class="rc-sub">La cadena pertenece al lenguaje</span>
+        </div>
+      </div>
+
+      <!-- Explanation box -->
+      <div class="explain-box">
+        <div class="explain-lbl">¿Qué ocurre aquí?</div>
+        <div class="explain-txt">
+          El tope de la pila es <strong>T'</strong> y el lookahead es <strong>*</strong>.
+          La tabla M[T', *] = producción 5 indica expandir <strong>T' → * F T'</strong>.
+          Se reemplaza T' en la pila por * F T'.
+        </div>
+      </div>
+
+      <!-- AI Doctor button -->
+      <button class="ai-btn">
+        <div><div class="ai-dot"></div></div>
+        <div>
+          <div class="ai-label">AI Grammar Doctor</div>
+          <div class="ai-sub">Analizar y sugerir mejoras</div>
+        </div>
+      </button>
+
+      <!-- Diagnosis items -->
+      <div>
+        <div class="sec-label">Diagnóstico</div>
+        <div class="diag-list">
+          <div class="diag-item"><div class="diag-dot ok"></div>Sin recursión izquierda</div>
+          <div class="diag-item"><div class="diag-dot ok"></div>Tabla LL(1) sin conflictos</div>
+          <div class="diag-item"><div class="diag-dot ok"></div>No terminales bien definidos</div>
+          <div class="diag-item"><div class="diag-dot ok"></div>Gramática normalizada</div>
+        </div>
+      </div>
+
+      <!-- Non-terminals -->
+      <div>
+        <div class="sec-label">No terminales</div>
+        <div class="nt-t-box">
+          <span class="tok" style="background:rgba(167,139,250,.1);color:var(--accent2);">E</span>
+          <span class="tok" style="background:rgba(167,139,250,.1);color:var(--accent2);">E'</span>
+          <span class="tok" style="background:rgba(167,139,250,.1);color:var(--accent2);">T</span>
+          <span class="tok" style="background:rgba(167,139,250,.1);color:var(--accent2);">T'</span>
+          <span class="tok" style="background:rgba(167,139,250,.1);color:var(--accent2);">F</span>
+        </div>
+      </div>
+
+      <!-- Terminals -->
+      <div>
+        <div class="sec-label">Terminales</div>
+        <div class="nt-t-box">
+          <span class="tok tok-t">id</span>
+          <span class="tok tok-t">+</span>
+          <span class="tok tok-t">*</span>
+          <span class="tok tok-t">(</span>
+          <span class="tok tok-t">)</span>
+          <span class="tok tok-\$">$</span>
+        </div>
+      </div>
+
+      <!-- Productions right panel -->
+      <div>
+        <div class="sec-label">Producciones activas</div>
+        <div class="prod-list">
+          <div class="prod-row">
+            <span class="p-idx">1</span>
+            <span class="p-lhs">E</span>
+            <span class="p-rhs"><span class="op">→</span> <span class="nt">T</span> <span class="nt">E'</span></span>
+          </div>
+          <div class="prod-row">
+            <span class="p-idx">2</span>
+            <span class="p-lhs">E'</span>
+            <span class="p-rhs"><span class="op">→</span> <span class="t">+</span> <span class="nt">T</span> <span class="nt">E'</span></span>
+          </div>
+          <div class="prod-row hi">
+            <span class="p-idx">5</span>
+            <span class="p-lhs">T'</span>
+            <span class="p-rhs"><span class="op">→</span> <span class="t">*</span> <span class="nt">F</span> <span class="nt">T'</span></span>
+          </div>
+          <div class="prod-row">
+            <span class="p-idx">8</span>
+            <span class="p-lhs">F</span>
+            <span class="p-rhs"><span class="op">→</span> <span class="t">id</span></span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div><!-- /app-grid -->
+
+<!-- ═══════════════════════════════════════ STATUS BAR ═══════════════════════════════════════ -->
+<div class="statusbar">
+  <div style="display:flex;align-items:center;gap:5px;">
+    <div class="sb-dot" style="background:var(--green);"></div>
+    <span id="sbStatus">Gramática válida · LL(1)</span>
+  </div>
+  <div class="sb-sep"></div>
+  <span>Parser: <strong style="color:var(--accent);" id="sbParser">LL(1)</strong></span>
+  <div class="sb-sep"></div>
+  <span>Prods: <strong style="color:var(--txt1);">8</strong></span>
+  <div class="sb-sep"></div>
+  <span>Terminales: <strong style="color:var(--accent3);">5</strong></span>
+  <span style="margin-left:auto;opacity:.4;">ParserLab Pro v1.0 · Compiladores 2025</span>
+</div>
+
+<!-- ═══════════════════════════════════════ JAVASCRIPT ═══════════════════════════════════════ -->
+<script>
+const GRAMMARS = {
+  arith: `E  → T E'\nE' → + T E' | ε\nT  → F T'\nT' → * F T' | ε\nF  → ( E ) | id`,
+  ll1:   `S → A B\nA → a A | ε\nB → b B | ε`,
+  lr:    `E → E + T | T\nT → T * F | F\nF → ( E ) | id`,
+  ambig: `S → S + S | S * S | ( S ) | id`,
+  eps:   `A → a A | ε`,
+  slr:   `E → E + T | T\nT → T * F | F\nF → id`
+};
+
+function switchModule(name, btn) {
+  document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+
+  document.querySelectorAll('.module').forEach(m => {
+    m.style.display = 'none';
+  });
+
+  const mod = document.getElementById('mod-' + name);
+  if (mod) {
+    mod.style.display = 'flex';
+    mod.style.flexDirection = 'column';
+  }
+
+  const badges = {
+    lab: 'LL(1)', automata: 'LR(0)', compare: 'Todos',
+    conflict: 'Conflictos', refactor: 'Refactor',
+    tutor: 'Tutor IA', gallery: 'Galería', report: 'Reporte'
+  };
+  document.getElementById('rightBadge').textContent = badges[name] || name;
+}
+
+function setTab(btn, name) {
+  document.querySelectorAll('.ctab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  const pane = document.getElementById('tp-' + name);
+  if (pane) pane.classList.add('active');
+}
+
+function loadEx(key) {
+  const ta = document.getElementById('grammarIn');
+  if (ta && GRAMMARS[key]) {
+    ta.value = GRAMMARS[key];
+    updateLines();
+  }
+  if (key === 'lr' || key === 'ambig') {
+    document.getElementById('gramBadge').textContent = 'Recursión izq.';
+    document.getElementById('gramBadge').className = 'badge b-amber';
+  } else {
+    document.getElementById('gramBadge').textContent = 'Válida · LL(1)';
+    document.getElementById('gramBadge').className = 'badge b-green';
+  }
+}
+
+function selParser(el) {
+  document.querySelectorAll('.parser-card').forEach(c => c.classList.remove('sel'));
+  el.classList.add('sel');
+  const name = el.querySelector('.pc-name').textContent;
+  document.getElementById('sbParser').textContent = name;
+  document.getElementById('rightBadge').textContent = name;
+}
+
+function setStr(s) {
+  document.getElementById('strIn').value = s;
+}
+
+function updateLines() {
+  const ta = document.getElementById('grammarIn');
+  const ln = document.getElementById('lineNums');
+  if (!ta || !ln) return;
+  const count = ta.value.split('\n').length;
+  ln.innerHTML = Array.from({ length: count }, (_, i) => `<span>${i + 1}</span>`).join('');
+}
+
+function runSim() {
+  const btn = document.getElementById('runBtn');
+  btn.textContent = '⏳ Ejecutando…';
+  setTimeout(() => {
+    btn.textContent = '▶ Ejecutar';
+    // Switch to simulator tab if in lab module
+    const simTab = document.querySelector('.ctab:nth-child(3)');
+    if (simTab) setTab(simTab, 'sim');
+  }, 600);
+}
+
+function togglePresMode() {
+  const current = document.body.style.zoom;
+  document.body.style.zoom = (current === '1.2') ? '' : '1.2';
+}
+
+function toggleTheme() {
+  const root = document.documentElement;
+  const bg = root.style.getPropertyValue('--bg0');
+  if (bg === '#f8faff') {
+    // Back to dark
+    root.style.setProperty('--bg0', '#080c16');
+    root.style.setProperty('--bg1', '#0c1220');
+    root.style.setProperty('--bg2', '#101828');
+    root.style.setProperty('--bg3', '#162035');
+    root.style.setProperty('--txt0', '#f0f4ff');
+    root.style.setProperty('--txt1', '#a8b8d8');
+    root.style.setProperty('--txt2', '#637799');
+    root.style.setProperty('--txt3', '#3a4f6e');
+  } else {
+    // Light mode
+    root.style.setProperty('--bg0', '#f8faff');
+    root.style.setProperty('--bg1', '#eef2ff');
+    root.style.setProperty('--bg2', '#e8eeff');
+    root.style.setProperty('--bg3', '#dde4ff');
+    root.style.setProperty('--txt0', '#0c1220');
+    root.style.setProperty('--txt1', '#1d2b45');
+    root.style.setProperty('--txt2', '#3a4f6e');
+    root.style.setProperty('--txt3', '#637799');
+  }
+}
+
+// Initialize line numbers
+document.getElementById('grammarIn').addEventListener('input', updateLines);
+updateLines();
+</script>
+
+</body>
+</html>
