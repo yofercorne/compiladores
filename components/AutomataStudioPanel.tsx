@@ -508,7 +508,11 @@ function Automata3DView({
     let clickStartX=0,clickStartY=0;
 
     function onMouseClick(ev:MouseEvent){
-      const rect=mount.getBoundingClientRect();
+const currentMount = mountRef.current;
+if (!currentMount) return;
+
+const rect = currentMount.getBoundingClientRect();
+
       const dx=ev.clientX-clickStartX, dy=ev.clientY-clickStartY;
       if(Math.hypot(dx,dy)>5)return; // was a drag
       mouse.x=((ev.clientX-rect.left)/W)*2-1;

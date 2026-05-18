@@ -1709,7 +1709,7 @@ function buildExpressionAstLabel(inputString: string): string | null {
 type DynamicParseTreePanelProps = {
   grammar: Grammar;
   inputString: string;
-  simulation?: LL1SimulationResult;
+  simulation?: LL1SimulationResult | undefined;
 };
 
 function DynamicParseTreePanel({ grammar, inputString, simulation }: DynamicParseTreePanelProps) {
