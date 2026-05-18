@@ -18,9 +18,13 @@ type ParserLabShellProps = {
 
   centerPanel: ReactNode;
 
-  rightTitle: string;
+  /**
+   * Panel derecho opcional.
+   * Si no se envía rightPanel, el centro se expande automáticamente.
+   */
+  rightTitle?: string;
   rightBadge?: ReactNode;
-  rightPanel: ReactNode;
+  rightPanel?: ReactNode;
 
   statusbar: ReactNode;
 
@@ -49,6 +53,8 @@ export function ParserLabShell({
   onTogglePresentation,
   onToggleTheme,
 }: ParserLabShellProps) {
+  const hasRightPanel = rightPanel !== undefined && rightPanel !== null;
+
   return (
     <main className="min-h-screen overflow-hidden bg-[var(--bg0)] text-[var(--txt0)]">
       <ParserTopbar
@@ -62,28 +68,40 @@ export function ParserLabShell({
         {...(onToggleTheme !== undefined ? { onToggleTheme } : {})}
       />
 
-      <div className="app-grid">
-        <aside className="panel">
+      <div
+        className="app-grid"
+        style={{
+          gridTemplateColumns: hasRightPanel
+            ? "minmax(335px, 365px) minmax(0, 1fr) minmax(300px, 360px)"
+            : "minmax(335px, 365px) minmax(0, 1fr)",
+        }}
+      >
+        <aside className="panel min-w-0">
           <div className="panel-hd">
             <span className="panel-title">{leftTitle}</span>
             {leftBadge}
           </div>
 
-          <div className="panel-body">{leftPanel}</div>
+          <div className="panel-body min-w-0">{leftPanel}</div>
         </aside>
 
-        <section className="panel" style={{ borderRight: "none" }}>
-          <div className="center-body">{centerPanel}</div>
+        <section
+          className="panel min-w-0"
+          style={{ borderRight: hasRightPanel ? undefined : "none" }}
+        >
+          <div className="center-body min-w-0">{centerPanel}</div>
         </section>
 
-        <aside className="panel right">
-          <div className="panel-hd">
-            <span className="panel-title">{rightTitle}</span>
-            {rightBadge}
-          </div>
+        {hasRightPanel ? (
+          <aside className="panel right min-w-0">
+            <div className="panel-hd">
+              <span className="panel-title">{rightTitle ?? "Panel"}</span>
+              {rightBadge}
+            </div>
 
-          <div className="panel-body">{rightPanel}</div>
-        </aside>
+            <div className="panel-body min-w-0">{rightPanel}</div>
+          </aside>
+        ) : null}
       </div>
 
       {statusbar}

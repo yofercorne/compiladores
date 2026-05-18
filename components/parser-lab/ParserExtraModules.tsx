@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 import {
   GRAMMAR_EXAMPLES,
@@ -552,23 +552,45 @@ function ParserRefactorModule({
 }: {
   result: ParserExtraModulesResult | null;
 }) {
-  const [mode, setMode] = useState<RefactorMode>("left-recursion");
-  const [copied, setCopied] = useState(false);
-  const grammar = result?.grammar;
-  const refactorResult = useMemo(
-    () => (grammar ? buildRefactorResult(grammar, mode) : null),
-    [grammar, mode]
-  );
-  const relatedDiagnostics = useMemo(
-    () =>
-      collectConflictDiagnostics(result).filter(
-        (diagnostic) =>
-          diagnostic.category === "left-recursion" ||
-          diagnostic.category === "ambiguity-signal" ||
-          diagnostic.parser === "LL(1)"
-      ),
-    [result]
-  );
+const [mode, setMode] = useState<RefactorMode>("epsilon");
+const [copied, setCopied] = useState(false);
+
+const grammar = result?.grammar;
+
+const diagnostics = useMemo(
+  () => collectConflictDiagnostics(result),
+  [result]
+);
+
+const relatedDiagnostics = useMemo(
+  () =>
+    diagnostics.filter(
+      (diagnostic) =>
+        diagnostic.category === "left-recursion" ||
+        diagnostic.category === "ambiguity-signal" ||
+        diagnostic.category === "grammar-issue"
+    ),
+  [diagnostics]
+);
+
+const primaryDiagnostic = relatedDiagnostics[0] ?? null;
+
+const recommendedMode = useMemo<RefactorMode>(
+  () => getRecommendedRefactorMode(primaryDiagnostic),
+  [primaryDiagnostic]
+);
+
+useEffect(() => {
+  if (!grammar) return;
+
+  setMode(recommendedMode);
+  setCopied(false);
+}, [grammar, recommendedMode]);
+
+const refactorResult = useMemo(
+  () => (grammar ? buildRefactorResult(grammar, mode) : null),
+  [grammar, mode]
+);
 
   const options: {
     mode: RefactorMode;
@@ -629,7 +651,18 @@ function ParserRefactorModule({
         />
       ) : (
         <>
+
+
+          <RefactorDiagnosisBanner
+    diagnostic={primaryDiagnostic}
+    recommendedMode={recommendedMode}
+    totalDiagnostics={relatedDiagnostics.length}
+  />
+
+
           <div style={{ display: "grid", gap: 10 }}>
+
+
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               {options.map((option) => (
                 <button
@@ -652,91 +685,12 @@ function ParserRefactorModule({
             </InfoBox>
           </div>
 
-          {relatedDiagnostics.length > 0 ? (
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))",
-                gap: 10
-              }}
-            >
-              {relatedDiagnostics.slice(0, 3).map((diagnostic) => (
-                <div
-                  key={diagnostic.id}
-                  style={{
-                    border: `1px solid ${getSeverityBorder(diagnostic.severity)}`,
-                    background: getSeverityBackground(diagnostic.severity),
-                    borderRadius: "var(--r)",
-                    padding: 12
-                  }}
-                >
-                  <div
-                    style={{
-                      fontSize: 10,
-                      fontWeight: 800,
-                      letterSpacing: 0.7,
-                      textTransform: "uppercase",
-                      color: getSeverityColor(diagnostic.severity)
-                    }}
-                  >
-                    {getCategoryLabel(diagnostic.category)}
-                  </div>
 
-                  <div
-                    style={{
-                      marginTop: 5,
-                      fontSize: 12,
-                      fontWeight: 800,
-                      color: "var(--txt0)"
-                    }}
-                  >
-                    {diagnostic.title}
-                  </div>
-
-                  <div
-                    style={{
-                      marginTop: 5,
-                      fontSize: 11,
-                      lineHeight: 1.6,
-                      color: "var(--txt2)"
-                    }}
-                  >
-                    {diagnostic.refactorHint || diagnostic.suggestion}
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : null}
-
-          <div className="diff-block">
-            <div className="diff-head">
-              <span>{refactorResult.title}</span>
-              <span
-                style={{
-                  color: refactorResult.changed ? "var(--green)" : "var(--amber)",
-                  fontSize: 10
-                }}
-              >
-                {refactorResult.changed ? "transformación generada" : "sin cambios necesarios"}
-              </span>
-            </div>
-
-            <div style={{ padding: "10px 12px", color: "var(--txt2)", fontSize: 12 }}>
-              {refactorResult.subtitle}
-            </div>
-
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
-                gap: 10,
-                padding: "0 12px 12px"
-              }}
-            >
-              <GrammarPreview title="Antes" tone="remove" text={refactorResult.before} />
-              <GrammarPreview title="Después" tone="add" text={refactorResult.after} />
-            </div>
-          </div>
+<RefactorComparisonBox
+  mode={mode}
+  grammar={grammar}
+  refactorResult={refactorResult}
+/>
 
           <div
             style={{
@@ -789,6 +743,435 @@ function ParserRefactorModule({
     </ExtraModuleFrame>
   );
 }
+function getRecommendedRefactorMode(
+  diagnostic: ConflictDiagnostic | null
+): RefactorMode {
+  if (!diagnostic) return "epsilon";
+
+  const text = [
+    diagnostic.title,
+    diagnostic.reason,
+    diagnostic.suggestion,
+    diagnostic.refactorHint,
+    diagnostic.scope,
+    diagnostic.parser
+  ]
+    .join(" ")
+    .toLowerCase();
+
+  if (diagnostic.category === "left-recursion") {
+    return "left-recursion";
+  }
+
+  if (
+    diagnostic.category === "ambiguity-signal" &&
+    (text.includes("expres") ||
+      text.includes("precedencia") ||
+      text.includes("asociatividad") ||
+      text.includes("e → e op e"))
+  ) {
+    return "expression-levels";
+  }
+
+  if (
+    diagnostic.parser === "LL(1)" ||
+    text.includes("prefijo") ||
+    text.includes("factorización") ||
+    text.includes("factorizacion") ||
+    text.includes("first/follow")
+  ) {
+    return "left-factoring";
+  }
+
+  if (diagnostic.category === "grammar-issue") {
+    return "epsilon";
+  }
+
+  return "epsilon";
+}
+
+function getRefactorModeTitle(mode: RefactorMode): string {
+  if (mode === "left-recursion") return "Eliminar recursión izquierda";
+  if (mode === "left-factoring") return "Factorizar por la izquierda";
+  if (mode === "expression-levels") return "Separar precedencia y asociatividad";
+  return "Normalizar la gramática";
+}
+
+function RefactorDiagnosisBanner({
+  diagnostic,
+  recommendedMode,
+  totalDiagnostics
+}: {
+  diagnostic: ConflictDiagnostic | null;
+  recommendedMode: RefactorMode;
+  totalDiagnostics: number;
+}) {
+  const severity = diagnostic?.severity ?? "info";
+
+  return (
+    <section
+      style={{
+        border: `1px solid ${getSeverityBorder(severity)}`,
+        background: getSeverityBackground(severity),
+        borderRadius: "var(--r)",
+        padding: 14,
+        display: "grid",
+        gap: 10
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          alignItems: "flex-start",
+          justifyContent: "space-between",
+          gap: 12,
+          flexWrap: "wrap"
+        }}
+      >
+        <div>
+          <div
+            style={{
+              fontSize: 10,
+              fontWeight: 900,
+              letterSpacing: 0.9,
+              textTransform: "uppercase",
+              color: getSeverityColor(severity)
+            }}
+          >
+            {diagnostic ? "Problema detectado" : "Diagnóstico de refactor"}
+          </div>
+
+          <h3
+            style={{
+              margin: "4px 0 0",
+              color: "var(--txt0)",
+              fontSize: 15,
+              fontWeight: 900
+            }}
+          >
+            {diagnostic?.title ?? "No se detectó un problema estructural fuerte"}
+          </h3>
+        </div>
+
+        <span
+          style={{
+            border: `1px solid ${getSeverityBorder(severity)}`,
+            color: getSeverityColor(severity),
+            borderRadius: 999,
+            padding: "4px 9px",
+            fontSize: 10,
+            fontWeight: 800
+          }}
+        >
+          {totalDiagnostics} diagnóstico{totalDiagnostics !== 1 ? "s" : ""}
+        </span>
+      </div>
+
+      <p
+        style={{
+          margin: 0,
+          color: "var(--txt2)",
+          fontSize: 12,
+          lineHeight: 1.7
+        }}
+      >
+        {diagnostic
+          ? diagnostic.reason
+          : "La gramática no muestra recursión izquierda, ambigüedad evidente ni conflicto LL(1) prioritario. Aun así, puedes normalizarla para dejarla más limpia."}
+      </p>
+
+      <div
+        style={{
+          padding: "9px 11px",
+          borderRadius: 10,
+          border: "1px solid rgba(96,165,250,.22)",
+          background: "rgba(96,165,250,.07)",
+          color: "var(--txt1)",
+          fontSize: 12,
+          lineHeight: 1.6
+        }}
+      >
+        <strong style={{ color: "var(--accent2)" }}>Solución propuesta:</strong>{" "}
+        {getRefactorModeTitle(recommendedMode)}
+        {diagnostic?.refactorHint ? (
+          <>
+            <br />
+            <span style={{ color: "var(--txt2)" }}>
+              {diagnostic.refactorHint}
+            </span>
+          </>
+        ) : null}
+      </div>
+    </section>
+  );
+}
+
+function buildRefactorPreview(
+  grammar: Grammar,
+  mode: RefactorMode,
+  refactorResult: RefactorResult
+): {
+  title: string;
+  description: string;
+  before: string;
+  after: string;
+} {
+  if (mode === "left-recursion") {
+    const affected = getDirectLeftRecursiveNonTerminals(grammar);
+    const before = getGrammarLinesForNonTerminals(grammar, affected);
+    const after = getOutputLinesForNonTerminals(refactorResult.after, affected);
+
+    return {
+      title: "Eliminación de recursión izquierda",
+      description:
+        "Se muestra la producción que empieza llamándose a sí misma y la versión equivalente sin recursión izquierda directa.",
+      before: before || "No se encontró recursión izquierda directa en esta gramática.",
+      after: after || refactorResult.after
+    };
+  }
+
+  if (mode === "left-factoring") {
+    const affected = getLeftFactoringNonTerminals(grammar);
+    const before = getGrammarLinesForNonTerminals(grammar, affected);
+    const after = getOutputLinesForNonTerminals(refactorResult.after, affected);
+
+    return {
+      title: "Factorización izquierda",
+      description:
+        "Se muestran alternativas que empiezan igual y la solución que extrae el prefijo común.",
+      before: before || "No se encontraron prefijos comunes claros.",
+      after: after || refactorResult.after
+    };
+  }
+
+  if (mode === "expression-levels") {
+    const before = getExpressionProblemLines(grammar);
+
+    return {
+      title: "Separación de precedencia",
+      description:
+        "Se muestra la forma ambigua típica de expresiones y una propuesta con niveles Expr, Term y Factor.",
+      before: before || "No se detectó un patrón claro tipo E → E op E.",
+      after: refactorResult.after
+    };
+  }
+
+  return {
+    title: "Normalización de gramática",
+    description:
+      "Se muestra la gramática reconstruida con flechas, ε y alternativas normalizadas.",
+    before: refactorResult.before,
+    after: refactorResult.after
+  };
+}
+
+function getDirectLeftRecursiveNonTerminals(grammar: Grammar): string[] {
+  const affected = new Set<string>();
+
+  for (const production of grammar.productions) {
+    const first = getFirstMeaningfulSymbol(production.right);
+
+    if (first === production.left) {
+      affected.add(production.left);
+    }
+  }
+
+  return Array.from(affected);
+}
+
+function getLeftFactoringNonTerminals(grammar: Grammar): string[] {
+  const affected = new Set<string>();
+  const byLeft = groupProductionsByLeft(grammar);
+
+  for (const [left, productions] of byLeft.entries()) {
+    const alternatives = productions.map((production) =>
+      normalizeRightSymbols(production.right)
+    );
+
+    const groups = groupByFirstSymbol(alternatives);
+
+    if (
+      groups.some(
+        (group) =>
+          group.alternatives.length >= 2 &&
+          !isEpsilonSymbol(group.first) &&
+          longestCommonPrefix(group.alternatives).length > 0
+      )
+    ) {
+      affected.add(left);
+    }
+  }
+
+  return Array.from(affected);
+}
+
+function getExpressionProblemLines(grammar: Grammar): string {
+  const nonTerminals = new Set(grammar.nonTerminals);
+
+  return grammar.productions
+    .filter((production) => {
+      const right = production.right.filter(
+        (symbol) => !isEpsilonSymbol(symbol)
+      );
+
+      const first = right[0];
+      const last = right[right.length - 1];
+      const middle = right.slice(1, -1);
+
+      return (
+        right.length >= 3 &&
+        first === production.left &&
+        last === production.left &&
+        middle.some((symbol) => !nonTerminals.has(symbol))
+      );
+    })
+    .map(formatProductionLine)
+    .join("\n");
+}
+
+function getGrammarLinesForNonTerminals(
+  grammar: Grammar,
+  nonTerminals: string[]
+): string {
+  if (nonTerminals.length === 0) return "";
+
+  const selected = new Set(nonTerminals);
+
+  return grammar.productions
+    .filter((production) => selected.has(production.left))
+    .map(formatProductionLine)
+    .join("\n");
+}
+
+function getOutputLinesForNonTerminals(
+  output: string,
+  nonTerminals: string[]
+): string {
+  if (nonTerminals.length === 0) return "";
+
+  return output
+    .split("\n")
+    .filter((line) => {
+      const left = line.split("->")[0]?.trim() ?? "";
+      return nonTerminals.some(
+        (symbol) =>
+          left === symbol ||
+          left.startsWith(`${symbol}'`) ||
+          left.startsWith(`${symbol}Fact`)
+      );
+    })
+    .join("\n");
+}
+
+function RefactorComparisonBox({
+  mode,
+  grammar,
+  refactorResult
+}: {
+  mode: RefactorMode;
+  grammar: Grammar;
+  refactorResult: RefactorResult;
+}) {
+  const preview = buildRefactorPreview(grammar, mode, refactorResult);
+
+  return (
+    <section
+style={{
+  border: "1px solid rgba(96,165,250,.35)",
+  borderRadius: "var(--r)",
+  background: "var(--bg2)",
+  overflow: "visible",
+  display: "flex",
+  flexDirection: "column",
+  minHeight: 320,
+  position: "relative",
+  zIndex: 1
+}}
+    >
+      <div
+        style={{
+          padding: "14px 16px",
+          borderBottom: "1px solid rgba(96,165,250,.22)",
+          background:
+            "linear-gradient(135deg, rgba(96,165,250,.16), rgba(15,23,42,.85))",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 12,
+          flexWrap: "wrap"
+        }}
+      >
+        <div>
+          <div
+            style={{
+              color: "var(--txt0)",
+              fontSize: 15,
+              fontWeight: 900
+            }}
+          >
+            {preview.title}
+          </div>
+
+          <div
+            style={{
+              marginTop: 4,
+              color: "var(--txt2)",
+              fontSize: 12,
+              lineHeight: 1.6
+            }}
+          >
+            {preview.description}
+          </div>
+        </div>
+
+        <span
+          style={{
+            color: refactorResult.changed ? "#34d399" : "#fbbf24",
+            fontSize: 10,
+            fontWeight: 900,
+            border: `1px solid ${
+              refactorResult.changed
+                ? "rgba(52,211,153,.42)"
+                : "rgba(251,191,36,.42)"
+            }`,
+            background: refactorResult.changed
+              ? "rgba(52,211,153,.13)"
+              : "rgba(251,191,36,.13)",
+            borderRadius: 999,
+            padding: "5px 10px",
+            whiteSpace: "nowrap"
+          }}
+        >
+          {refactorResult.changed ? "solución generada" : "sin cambio estructural"}
+        </span>
+      </div>
+
+      <div
+style={{
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+  gap: 12,
+  padding: 12,
+  alignItems: "stretch",
+  minHeight: 240,
+  overflow: "visible"
+}}
+      >
+        <GrammarPreview
+          title="Parte problemática"
+          tone="remove"
+          text={preview.before}
+        />
+
+        <GrammarPreview
+          title="Solución propuesta"
+          tone="add"
+          text={preview.after}
+        />
+      </div>
+    </section>
+  );
+}
 
 function GrammarPreview({
   title,
@@ -801,32 +1184,92 @@ function GrammarPreview({
 }) {
   const lines = text.split("\n").filter((line) => line.trim().length > 0);
 
+  const isAdd = tone === "add";
+  const accent = isAdd ? "var(--green)" : "var(--red)";
+  const softBg = isAdd ? "rgba(52,211,153,.08)" : "rgba(248,113,113,.08)";
+  const border = isAdd ? "rgba(52,211,153,.28)" : "rgba(248,113,113,.28)";
+
   return (
     <div
       style={{
-        border: "1px solid var(--border)",
+        border: `1px solid ${border}`,
         borderRadius: 12,
         background: "var(--bg3)",
-        overflow: "hidden"
+        overflow: "visible",
+        minHeight: 220,
+        display: "flex",
+        flexDirection: "column",
+        position: "relative",
+        zIndex: 2
       }}
     >
       <div
         style={{
-          padding: "8px 10px",
-          borderBottom: "1px solid var(--border)",
-          color: "var(--txt1)",
+          padding: "9px 10px",
+          borderBottom: `1px solid ${border}`,
+          color: accent,
           fontSize: 11,
-          fontWeight: 800
+          fontWeight: 900,
+          display: "flex",
+          justifyContent: "space-between",
+          gap: 10
         }}
       >
-        {title}
+        <span>{title}</span>
+        <span style={{ color: "var(--txt3)", fontSize: 10 }}>
+          {lines.length} línea{lines.length !== 1 ? "s" : ""}
+        </span>
       </div>
 
-      <div style={{ padding: 8, display: "grid", gap: 4 }}>
+      <div
+        style={{
+          padding: 10,
+          display: "grid",
+          gap: 6,
+          alignContent: "start",
+          flex: 1,
+          minHeight: 160,
+          overflow: "visible"
+        }}
+      >
         {lines.map((line, index) => (
-          <div key={`${title}-${line}-${index}`} className={`diff-line ${tone}`}>
-            <span className="diff-sign">{tone === "add" ? "+" : tone === "remove" ? "−" : " "}</span>
-            {line}
+          <div
+            key={`${title}-${index}`}
+            style={{
+              display: "grid",
+              gridTemplateColumns: "22px minmax(0, 1fr)",
+              gap: 8,
+              alignItems: "start",
+              padding: "6px 8px",
+              borderRadius: 8,
+              background: softBg,
+              border: `1px solid ${border}`,
+              color: "var(--txt1)",
+              fontFamily: "var(--mono)",
+              fontSize: 12,
+              lineHeight: 1.55,
+              minHeight: 28
+            }}
+          >
+            <span
+              style={{
+                color: accent,
+                fontWeight: 900,
+                textAlign: "center"
+              }}
+            >
+              {tone === "add" ? "+" : tone === "remove" ? "−" : " "}
+            </span>
+
+            <span
+              style={{
+                whiteSpace: "pre-wrap",
+                wordBreak: "break-word",
+                overflowWrap: "anywhere"
+              }}
+            >
+              {line}
+            </span>
           </div>
         ))}
       </div>
@@ -2361,24 +2804,161 @@ function explainTableConflict(parser: string, type: string, symbol: string) {
 
 function getConflictEvidence(conflict: UnknownConflict) {
   const evidence = [
-    conflict.productionId ? `Producción: ${conflict.productionId}` : "",
-    conflict.production ? `Producción: ${stringifyCompact(conflict.production)}` : "",
-    conflict.item ? `Ítem: ${stringifyCompact(conflict.item)}` : "",
+    conflict.productionId
+      ? `Producción involucrada: ${conflict.productionId}`
+      : "",
+
+    conflict.production
+      ? `Producción involucrada: ${formatConflictProduction(conflict.production)}`
+      : "",
+
+    conflict.item
+      ? `Ítem involucrado: ${formatConflictItem(conflict.item)}`
+      : "",
+
     Array.isArray(conflict.items) && conflict.items.length > 0
-      ? `Ítems: ${conflict.items.map((item) => stringifyCompact(item)).join(" | ")}`
+      ? `Ítems involucrados: ${conflict.items.map(formatConflictItem).join(" | ")}`
       : "",
+
     Array.isArray(conflict.actions) && conflict.actions.length > 0
-      ? `Acciones: ${conflict.actions.map((action) => stringifyCompact(action)).join(" | ")}`
+      ? `Acciones en conflicto: ${conflict.actions.map(formatParserAction).join(" vs ")}`
       : "",
+
     conflict.existingAction
-      ? `Acción existente: ${stringifyCompact(conflict.existingAction)}`
+      ? `Acción que ya existía: ${formatParserAction(conflict.existingAction)}`
       : "",
+
     conflict.incomingAction
-      ? `Acción nueva: ${stringifyCompact(conflict.incomingAction)}`
+      ? `Acción que se intentó agregar: ${formatParserAction(conflict.incomingAction)}`
       : ""
   ].filter(Boolean);
 
-  return evidence.length > 0 ? evidence : ["La tabla reportó más de una acción posible en la misma celda."];
+  return evidence.length > 0
+    ? evidence
+    : ["La tabla reportó más de una acción posible en la misma celda."];
+}
+function formatParserAction(action: unknown): string {
+  if (action === undefined || action === null) return "acción no especificada";
+
+  if (typeof action === "string") return action;
+
+  const item = action as Record<string, unknown>;
+  const type = String(item.type ?? item.action ?? item.kind ?? "").toLowerCase();
+
+  if (type === "shift") {
+    const target =
+      item.toState ??
+      item.state ??
+      item.nextState ??
+      item.target ??
+      "?";
+
+    return `desplazar y pasar al estado ${target}`;
+  }
+
+  if (type === "reduce") {
+    const production = item.production ?? item.prod;
+    const productionText = formatConflictProduction(production);
+
+    return `reducir usando ${productionText}`;
+  }
+
+  if (type === "goto") {
+    const target =
+      item.toState ??
+      item.state ??
+      item.nextState ??
+      item.target ??
+      "?";
+
+    return `ir al estado ${target}`;
+  }
+
+  if (type === "accept") {
+    return "aceptar la cadena";
+  }
+
+  if (type === "error") {
+    return "marcar error sintáctico";
+  }
+
+  return stringifyCompact(action);
+}
+
+function formatConflictProduction(value: unknown): string {
+  if (value === undefined || value === null) return "producción no especificada";
+
+  if (typeof value === "string") return value;
+
+  const production = value as Record<string, unknown>;
+
+  const raw = production.raw;
+  if (typeof raw === "string" && raw.trim().length > 0) {
+    return raw.replace("->", "→");
+  }
+
+  const left = production.left;
+  const right = production.right;
+
+  if (typeof left === "string" && Array.isArray(right)) {
+    const cleanRight = right
+      .map(String)
+      .filter((symbol) => !isEpsilonSymbol(symbol));
+
+    return `${left} → ${cleanRight.length > 0 ? cleanRight.join(" ") : "ε"}`;
+  }
+
+  const id = production.id ?? production.productionId;
+  if (id !== undefined) return `producción ${String(id)}`;
+
+  return stringifyCompact(value);
+}
+
+function formatConflictItem(value: unknown): string {
+  if (value === undefined || value === null) return "ítem no especificado";
+
+  if (typeof value === "string") return value;
+
+  const item = value as Record<string, unknown>;
+
+  const production = item.production ?? item.prod;
+  const dot = Number(item.dot ?? item.position ?? item.dotPosition ?? 0);
+
+  if (production) {
+    return formatProductionWithDot(production, dot);
+  }
+
+  const productionId = item.productionId ?? item.prodId;
+  if (productionId !== undefined) {
+    return `ítem de ${String(productionId)} con punto en posición ${dot}`;
+  }
+
+  return stringifyCompact(value);
+}
+
+function formatProductionWithDot(value: unknown, dot: number): string {
+  if (value === undefined || value === null) return "producción no especificada";
+
+  if (typeof value === "string") return value;
+
+  const production = value as Record<string, unknown>;
+  const left = production.left;
+  const right = production.right;
+
+  if (typeof left !== "string" || !Array.isArray(right)) {
+    return formatConflictProduction(value);
+  }
+
+  const symbols = right
+    .map(String)
+    .filter((symbol) => !isEpsilonSymbol(symbol));
+
+  const visible = symbols.length > 0 ? [...symbols] : ["ε"];
+  const safeDot = Math.max(0, Math.min(dot, visible.length));
+
+  visible.splice(safeDot, 0, "·");
+
+  return `${left} → ${visible.join(" ")}`;
 }
 
 function getParserConflictSuggestion(parser: string, type: string) {

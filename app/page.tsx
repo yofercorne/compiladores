@@ -38,9 +38,7 @@ import {
   ParserCenterPanel,
   ParserLabShell,
   ParserLeftPanel,
-  ParserRightPanel,
   ParserStatusbar,
-  type ParserKind,
   type ParserLabModule
 } from "@/components/parser-lab";
 
@@ -69,55 +67,31 @@ type AnalysisResult = {
 
 const DEFAULT_EXAMPLE = GRAMMAR_EXAMPLES[0]!;
 
-const PARSER_LABEL: Record<ParserKind, string> = {
-  recursiveDescent: "Descenso recursivo",
-  ll1: "LL(1)",
-  lr0: "LR(0)",
-  slr1: "SLR(1)",
-  lr1: "LR(1)",
-  lalr1: "LALR(1)"
-};
-
-const MODULE_BADGE: Record<ParserLabModule, string> = {
-  lab: "Lab",
-  automata: "Autómata",
-  compare: "Comparar",
-  conflict: "Conflictos",
-  refactor: "Refactor",
-  tutor: "Tutor IA",
-  gallery: "Galería",
-  report: "Reporte"
-};
-
 export default function HomePage() {
   const [grammarSource, setGrammarSource] = useState(DEFAULT_EXAMPLE.grammar);
   const [inputString, setInputString] = useState(DEFAULT_EXAMPLE.input);
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [selectedExampleId, setSelectedExampleId] = useState<string | undefined>(
-  DEFAULT_EXAMPLE.id
-);
+    DEFAULT_EXAMPLE.id
+  );
 
   const [activeModule, setActiveModule] = useState<ParserLabModule>("lab");
-  const [activeParser, setActiveParser] = useState<ParserKind>("ll1");
   const [isRunning, setIsRunning] = useState(false);
 
-
-function handleGrammarChange(value: string) {
-  setSelectedExampleId(undefined);
-  setGrammarSource(value);
-  setResult(null);
-}
-
-  function handleParserChange(parser: ParserKind) {
-    setActiveParser(parser);
+  function handleGrammarChange(value: string) {
+    setSelectedExampleId(undefined);
+    setGrammarSource(value);
+    setResult(null);
   }
 
-  function handleSelectExample(example: GrammarExample) {
+function handleSelectExample(example: GrammarExample) {
   setSelectedExampleId(example.id);
   setGrammarSource(example.grammar);
   setInputString(example.input);
   setResult(null);
-  setActiveModule("lab");
+
+  // NO colocar:
+  // setActiveModule("lab");
 }
 
   function handleAnalyze() {
@@ -325,40 +299,26 @@ function handleGrammarChange(value: string) {
         <ParserLeftPanel
           grammarSource={grammarSource}
           inputString={inputString}
-          activeParser={activeParser}
           onGrammarChange={handleGrammarChange}
           onInputChange={setInputString}
-          onParserChange={handleParserChange}
           onAnalyze={handleRunAnalysis}
         />
       }
       centerPanel={
-<ParserCenterPanel
-  activeModule={activeModule}
-  result={result}
-  inputString={inputString}
-  examples={GRAMMAR_EXAMPLES}
-  onSelectExample={handleSelectExample}
-  {...(selectedExampleId !== undefined
-    ? { selectedExampleId }
-    : {})}
-/>
-      }
-      rightTitle="Analizadores"
-      rightBadge={
-        <span className="badge b-purple">{MODULE_BADGE[activeModule]}</span>
-      }
-      rightPanel={
-        <ParserRightPanel
-          activeParser={activeParser}
-          onParserChange={handleParserChange}
+        <ParserCenterPanel
+          activeModule={activeModule}
+          result={result}
+          inputString={inputString}
+          examples={GRAMMAR_EXAMPLES}
+          onSelectExample={handleSelectExample}
+          {...(selectedExampleId !== undefined ? { selectedExampleId } : {})}
         />
       }
       statusbar={
         <ParserStatusbar
           status={grammarStatus}
           message={grammarMessage}
-          activeParser={PARSER_LABEL[activeParser]}
+          activeParser="Todos los analizadores"
           productionCount={productionCount}
           terminalCount={terminalCount}
         />
